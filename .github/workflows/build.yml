@@ -20,6 +20,11 @@ jobs:
       - run: npx surfer download
       - run: npx surfer bootstrap
       - run: npx surfer import
+      - name: Install Mozilla toolchains (clang 19+)
+        working-directory: engine
+        run: |
+          ./mach --no-interactive bootstrap --application-choice browser
+          ls ~/.mozbuild/clang/bin | head
       - run: npx surfer build
       - run: npx surfer package
       - uses: actions/upload-artifact@v4
