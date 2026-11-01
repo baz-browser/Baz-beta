@@ -1,0 +1,25 @@
+name: build
+on: workflow_dispatch
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h /
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx surfer download
+      - run: npx surfer bootstrap
+      - run: npx surfer import
+      - run: npx surfer build
+      - run: npx surfer package
+      - uses: actions/upload-artifact@v4
+        with:
+          name: baz-linux
+          path: dist/*

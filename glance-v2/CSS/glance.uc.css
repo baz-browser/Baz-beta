@@ -1,0 +1,25 @@
+/* ==UserScript==
+// @name           Glance v2 Panel Style
+// @include        main
+// ==/UserScript== */
+
+.glance-overlay {
+  position: absolute !important;
+  width: 500px;
+  height: 400px;
+  background: rgba(30, 30, 35, 0.85);
+  backdrop-filter: blur(20px);
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transform: scale(0.92) translateY(8px);
+  transform-origin: top left;
+  transition: opacity 160ms ease, transform 160ms ease;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.glance-overlay.open {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}

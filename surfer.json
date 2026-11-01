@@ -1,0 +1,13 @@
+{
+  "name": "Baz",
+  "vendor": "Baz",
+  "appId": "baz.browser",
+  "binaryName": "baz",
+  "version": {
+    "product": "firefox",
+    "version": "159.0"
+  },
+  "buildOptions": {
+    "windowsUseSymbolicLinks": false
+  }
+}
