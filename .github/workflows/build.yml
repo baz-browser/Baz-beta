@@ -1,5 +1,7 @@
 name: build
 on: workflow_dispatch
+env:
+  SCCACHE_GHA_ENABLED: "true"
 jobs:
   linux:
     runs-on: ubuntu-latest
@@ -13,6 +15,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: mozilla-actions/sccache-action@v0.0.9
       - run: npm ci
       - run: npx surfer download
       - run: npx surfer bootstrap
