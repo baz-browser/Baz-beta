@@ -7,11 +7,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 360
     steps:
+      - uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 12288
+          swap-size-mb: 8192
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+          remove-codeql: 'true'
+          remove-docker-images: 'true'
       - uses: actions/checkout@v4
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
-          df -h /
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -20,15 +25,23 @@ jobs:
       - run: npx surfer download
       - run: npx surfer bootstrap
       - run: npx surfer import
-      - name: Install Mozilla toolchains (clang 19+)
+      - name: Install Mozilla toolchains
         working-directory: engine
         run: |
           git config user.email "ci@baz.local"
           git config user.name "ci"
           git commit --allow-empty -m "ci: base"
           ./mach --no-interactive bootstrap --application-choice browser
-          ls ~/.mozbuild/clang/bin | head
-      - run: npx surfer build
+      - name: Build
+        run: |
+          (while true; do date +%T; df -h / | tail -n 1; free -m | sed -n 2p; sleep 300; done) &
+          npx surfer build
+      - name: Diagnostics
+        if: always()
+        run: |
+          df -h
+          free -m
+          sudo dmesg | tail -n 30 || true
       - run: npx surfer package
       - uses: actions/upload-artifact@v4
         with:

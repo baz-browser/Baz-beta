@@ -1,0 +1,5 @@
+ac_add_options --disable-release
+ac_add_options --disable-tests
+ac_add_options --disable-debug-symbols
+ac_add_options --disable-geckodriver
+ac_add_options --without-wasm-sandboxed-libraries
