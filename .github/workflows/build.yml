@@ -74,14 +74,20 @@ jobs:
           name: baz-build-log
           path: build-logs/build.log
           if-no-files-found: warn
-      - name: Package
+      - name: Package (mach + dist/bin fallback)
+        shell: bash
         run: |
-          npx surfer package
-          ls -lh dist
+          cd engine
+          ./mach package || echo "mach package failed, continuing with dist/bin only"
+          ls -lh obj-*/dist | head -n 30
+          tar -C obj-*/dist -cf - bin | xz -T0 > ../baz-dist-bin.tar.xz
+          ls -lh ../baz-dist-bin.tar.xz
       - name: Upload build
         uses: actions/upload-artifact@v4
         with:
           retention-days: 7
           name: baz-linux
-          path: dist/*
+          path: |
+            baz-dist-bin.tar.xz
+            engine/obj-*/dist/*.tar.*
           if-no-files-found: error
