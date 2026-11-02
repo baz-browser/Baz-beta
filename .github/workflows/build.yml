@@ -1,49 +1,87 @@
 name: build
 on: workflow_dispatch
-env:
-  SCCACHE_GHA_ENABLED: "true"
 jobs:
-  linux:
+  build-linux:
     runs-on: ubuntu-latest
-    timeout-minutes: 360
+    timeout-minutes: 350
+    permissions:
+      contents: read
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_INCREMENTAL: 0
+      SCCACHE_GHA_ENABLED: "true"
     steps:
-      - uses: easimon/maximize-build-space@master
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
         with:
-          root-reserve-mb: 12288
-          swap-size-mb: 8192
-          remove-dotnet: 'true'
-          remove-android: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
-          remove-docker-images: 'true'
+          tool-cache: true
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: true
+          docker-images: true
+          swap-storage: true
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - uses: mozilla-actions/sccache-action@v0.0.9
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.9
+        with:
+          disable_annotations: true
+      - name: Expose actions cache variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env['ACTIONS_CACHE_URL'])
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env['ACTIONS_RUNTIME_TOKEN'])
+      - name: Setup Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 python3-pip dos2unix yasm nasm build-essential \
+            libgtk2.0-dev libpython3-dev m4 uuid libasound2-dev libcurl4-openssl-dev \
+            libdbus-1-dev libdrm-dev libdbus-glib-1-dev libgtk-3-dev libpulse-dev \
+            libx11-xcb-dev libxt-dev xvfb lld llvm
       - run: npm ci
-      - run: npx surfer download
-      - run: npx surfer bootstrap
-      - run: npx surfer import
-      - name: Install Mozilla toolchains
+      - name: Download Firefox source
+        run: npx surfer download
+      - name: Import patches
+        run: npx surfer import
+      - name: Bootstrap (Mozilla toolchains)
         working-directory: engine
-        run: |
-          git config user.email "ci@baz.local"
-          git config user.name "ci"
-          git commit --allow-empty -m "ci: base"
-          ./mach --no-interactive bootstrap --application-choice browser
+        run: ./mach --no-interactive bootstrap --application-choice browser
       - name: Build
+        shell: bash
         run: |
+          set -o pipefail
+          mkdir -p build-logs
           (while true; do date +%T; df -h / | tail -n 1; free -m | sed -n 2p; sleep 300; done) &
-          npx surfer build
+          npx surfer build 2>&1 | tee build-logs/build.log
       - name: Diagnostics
         if: always()
         run: |
-          df -h
+          df -h /
           free -m
-          sudo dmesg | tail -n 30 || true
-      - run: npx surfer package
-      - uses: actions/upload-artifact@v4
+          sccache --show-stats || true
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
+          name: baz-build-log
+          path: build-logs/build.log
+          if-no-files-found: warn
+      - name: Package
+        run: |
+          npx surfer package
+          ls -lh dist
+      - name: Upload build
+        uses: actions/upload-artifact@v4
+        with:
+          retention-days: 7
           name: baz-linux
           path: dist/*
+          if-no-files-found: error
